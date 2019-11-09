@@ -1,8 +1,10 @@
 (ns core
   (:import java.util.Base64)
   (:require [clojure.edn :as edn]
+            [clojure.set :refer [rename-keys]]
             [clj-http.client :as http-c]
             [cheshire.core :as jcat]
+            [tick.alpha.api :as tick-a]
             [hickory.core :as puccih]
             [hickory.select :as hsel]
             [com.stuartsierra.component :as component]))
@@ -130,23 +132,94 @@
                                  :comments-count] %))))]
     (map merge lt pc)))
 
+(defn get-stars-from
+  [github-username]
+  (let [github-auth
+        (-> "resources/newsconfig.edn"
+            slurp edn/read-string
+            :github-auth)
+        default-api-url "https://api.github.com"
+        starred-repo?
+        (fn
+          [event-data]
+          (and (= "WatchEvent" (get event-data "type"))
+               (= "started" (some-> event-data
+                                    (get "payload")
+                                    (get "action")))))
+        desired-repo-info
+        {"full_name" :name
+         "description" :description
+         "html_url" :url-github
+         "homepage" :url-home
+         "git_url" :url-get
+         "stargazers_count" :count-stars
+         }
+        get-repo-info
+        (fn [repo-name]
+          (let [res (clj-http.client/get
+                     (str default-api-url
+                          "/repos/" repo-name)
+                     {:basic-auth github-auth})
+                ;; no error handling
+                repo-info-body (:body res)
+                ri (jcat/parse-string repo-info-body)]
+            (->> (rename-keys ri desired-repo-info)
+                 (filter (fn [[key _]] (keyword? key)))
+                 (into {}))))
+        loc (str default-api-url
+                 "/users/" github-username "/events/public")
+        res (clj-http.client/get loc {:basic-auth github-auth})
+        ;; no error handling
+        user-info-body (:body res)
+        star-events
+        (filter
+         starred-repo?
+         (jcat/parse-string user-info-body))
+        star-event-names
+        (map (fn [star-event]
+               (-> star-event
+                   (get "repo")
+                   (get "name")))
+             star-events)
+        star-event-repo-infos
+        (map get-repo-info star-event-names)
+        stamped-star-event-infos
+        (map (fn [star-event star-event-repo-info]
+               (-> star-event-repo-info
+                   (assoc :star-time
+                          (-> star-event
+                              (get "created_at")
+                              tick-a/offset-date-time))))
+             star-events star-event-repo-infos)
+        ]
+    star-event-repo-infos
+    ))
 
 (defrecord Stor []
   component/Lifecycle
   (start [component]
     (-> component
         (assoc :!hn (atom [])
-               :!tw (atom []))))
+               :!tw (atom [])
+               :!gh (atom []))))
   (stop [component]
     (-> component
-        (dissoc :!hn :!tw))))
+        (dissoc :!hn :!tw :!gh))))
 
 (defn new-stor
   []
   (map->Stor {}))
 
 (defn update-stor
-  [{:keys [!hn !tw]}]
+  [{:keys [!hn !tw !gh]}]
+
+  (reset! !gh
+          (let [{:keys [gh-users]} (-> "resources/newsconfig.edn"
+                                       slurp edn/read-string)]
+            (->> gh-users
+                 (map (juxt identity (comp vec get-stars-from)))
+                 (mapv (partial zipmap [:username :stars])))))
+
   (reset! !tw
           (let [{:keys [tw-users]} (-> "resources/newsconfig.edn"
                                        slurp edn/read-string)]

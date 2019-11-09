@@ -29,7 +29,9 @@
         (do
           (c/update-stor stor)
           (-> {:hn @(:!hn stor)
-               :twitter @(:!tw stor)}
+               :twitter @(:!tw stor)
+               :gh @(:!gh stor)
+               }
               make-edn-resp)))))
 
 (defn routes-main

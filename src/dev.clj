@@ -52,3 +52,22 @@
         (filter #(> (:score %) 100))))
 
   )
+
+(comment
+
+  (defn ns-names-from-ns-map
+   [ns-sym]
+    (->> (filter
+          (fn [[_ el-var]]
+            (let [mns (-> el-var meta :ns)]
+              (if (nil? mns)
+                false
+                (= (ns-name mns) ns-sym)
+                ))
+            )
+          (ns-map ns-sym))
+         (map first)))
+
+  (ns-names-from-ns-map 'cheshire.core)
+
+  )

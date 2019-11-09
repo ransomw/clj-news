@@ -40,6 +40,38 @@
        (:text item)]
       [:span.points (:score item)]])])
 
+(defn github-stars
+  [all-stars]
+  [:div.gh-stars
+   [:h5 "stars"]
+   (for [stars all-stars]
+     ^{:key (:username stars)}
+     [:div.star
+      [:div
+       [:span.name (:username stars)]
+       [:ul
+        (for [star (:stars stars)]
+          ^{:key (:username star)}
+          [:li
+           {:style {:margin-bottom "1em"}}
+           [:div.name
+            [:span.label "name: "]
+            [:span.text (:name star)]]
+           [:div.description
+            [:span.label "description: "]
+            [:span.text (:description star)]]
+           [:div.count-stars
+            [:span.label "number of stars: "]
+            [:span.text (str (:count-stars star))]]
+           [:div.urls
+            [:a {:href (:url-github star)
+                 :style {:margin-right "1em"}} "github"]
+            (when-not (empty? (:url-home star))
+              [:a {:href (:url-home star)} "home"])
+            [:a {:href (:url-get star)
+                 :style {:margin-left "1em"}} "clone"]]]
+          )]]])])
+
 (defn root
   [!news]
   (let [news @!news]
@@ -49,7 +81,12 @@
       [:h3 "social"]
       [:div.social
        [:div.outlet [twitter (:twitter news)]]
-       [:div.outlet [hn (:hn news)]]]]]))
+       [:div.outlet [hn (:hn news)]]]]
+     [:section.seasons
+      [:h3 "cycles"]
+      [:div.computing
+       [:div.outlet [github-stars (:gh news)]]]
+      ]]))
 
 (defn render
   [!news]
