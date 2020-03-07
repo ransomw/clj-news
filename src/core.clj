@@ -1,13 +1,19 @@
 (ns core
   (:import java.util.Base64)
   (:require [clojure.edn :as edn]
-            [clojure.set :refer [rename-keys]]
+            [clojure.set :refer [rename-keys difference]]
+            [clojure.string :as string]
+            [clojure.core.async :as a]
             [clj-http.client :as http-c]
             [cheshire.core :as jcat]
             [tick.alpha.api :as tick-a]
             [hickory.core :as puccih]
             [hickory.select :as hsel]
-            [com.stuartsierra.component :as component]))
+            [durable-atom.core :refer [durable-atom]]
+            [com.stuartsierra.component :as component]
+            ))
+
+
 
 (defonce bearer-token nil)
 
@@ -59,22 +65,29 @@
 
 (defn get-twts-from
   [username]
-  (when (nil? bearer-token)
-    (set-twit-bearer-token))
-  (let [twts-resp (->
-                   (str
-                    "https://api.twitter.com"
-                    "/1.1/statuses/user_timeline.json?"
-                    "screen_name=" username
-                    "&count=" 3)
-                   (http-c/get
-                    {:headers {"Authorization"
-                               (str "Bearer " bearer-token)}})
-                   :body jcat/parse-string)]
-    (letfn [(format-twt [twt]
-              {:text (get twt "text")
-               :time (get twt "created_at")})]
-      (map format-twt twts-resp))))
+  (try (do
+         (when (nil? bearer-token)
+           (set-twit-bearer-token))
+         (let [twts-resp (->
+                          (str
+                           "https://api.twitter.com"
+                           "/1.1/statuses/user_timeline.json?"
+                           "screen_name=" username
+                           "&count=" 3)
+                          (http-c/get
+                           {:headers {"Authorization"
+                                      (str "Bearer " bearer-token)}})
+                          :body jcat/parse-string)]
+           (letfn [(format-twt [twt]
+                     {:text (get twt "text")
+                      :time (get twt "created_at")})]
+             (map format-twt twts-resp))))
+       (catch Exception e
+         ;; todo: taonesso's logging setup
+         ;; todo: percolate errors from here to ui
+         (do (println "error getting tweets")
+             (println e)
+             (list)))))
 
 (defn get-hn-frontpage
   []
@@ -195,37 +208,128 @@
     star-event-repo-infos
     ))
 
+(defn get-current-weather
+  [{:keys [lati longi]}]
+  ;; stolen from
+  ;; https://github.com/Gavlooth/forecast/blob/master/src/forecast/utility.cljs#L29:8
+  (let [appid
+        "0b2c9c8ac23b3a7595992042a07cd1be"
+        r (-> (str
+               "http://api.openweathermap.org/data/2.5/"
+               "forecast?lat=" lati "&lon=" longi
+               "&appid=" appid)
+              http-c/get :body jcat/parse-string)
+        openweathermap-name->clj-news-name
+        (fn [openweathermap-name]
+          (or
+           (get {"Rain" :rain}
+                openweathermap-name)
+           (keyword (str "unknown-openweathermap-"
+                         openweathermap-name))))]
+    {:temperature
+     (get-in r ["list" 0 "main" "temp"]) ;; kelvin?
+     :weather
+     (openweathermap-name->clj-news-name
+      (get-in r ["list" 0 "weather" 0 "main"]))
+     ;; ^ search for icons as these words appear
+     :is-daytime?
+     true ;; todo
+     ;; (get-in r ["city" "sunrise"]) ;; epoch times
+     ;; (get-in r ["city" "sunset"])
+     :city-name
+     (get-in r ["city" "name"])
+     :forecast
+     (->> (get r "list")
+          (map (fn [item]
+                 (assoc item :date-time
+                        (let [dt-txt
+                              (get item "dt_txt")]
+                          (-> dt-txt
+                              (string/replace " " "T")
+                              tick-a/date-time))))
+               )
+          (sort (fn [a b]
+                  (let [[dt-a dt-b] (map :date-time
+                                         [a b])]
+                    (tick-a/< dt-a dt-b)
+                    )))
+          (map (juxt #(get-in % ["main" "temp"])
+                     #(get-in % ["weather" 0 "main"])
+                     :date-time))
+          (map #(zipmap [:temp
+                         :weather
+                         :date-time] %))
+          (map #(update % :weather
+                        openweathermap-name->clj-news-name)))
+     }))
+
 (defrecord Stor []
   component/Lifecycle
   (start [component]
     (-> component
-        (assoc :!hn (atom [])
-               :!tw (atom [])
-               :!gh (atom []))))
+        (assoc :!hn (durable-atom "hn.atom")
+               :!tw (durable-atom "tw.atom")
+               :!gh (durable-atom "gh.atom")
+               :!geo-weather (atom []))))
   (stop [component]
     (-> component
-        (dissoc :!hn :!tw :!gh))))
+        (dissoc :!hn :!tw :!gh
+                :!geo-weather))))
 
 (defn new-stor
   []
   (map->Stor {}))
 
+(defn update-twitter-stor
+  [tw-users prev-tw]
+  (let [prev-tw (or prev-tw [])]
+    (into
+     (->> (difference (set tw-users)
+                      (set (map :username prev-tw)))
+          (map (juxt identity (comp vec get-twts-from)))
+          (mapv (partial zipmap [:username :tweets]))
+          (into
+           (map
+            (fn [{:keys [username tweets] :as prev-tw-ent}]
+              (let [add-tweets
+                    (->> (get-twts-from username)
+                         (remove #((set (map :time tweets))
+                                   (:time %)))
+                         vec)]
+                (update prev-tw-ent
+                        :tweets #(into % add-tweets))))
+            prev-tw)))))  )
+
+(defn update-hn-stor
+  [latest-frontpage prev-hn]
+  (into (or prev-hn [])
+        (->> latest-frontpage
+             (remove #((set (map :link prev-hn))
+                       (:link %))))))
+
 (defn update-stor
-  [{:keys [!hn !tw !gh]}]
-
-  (reset! !gh
-          (let [{:keys [gh-users]} (-> "resources/newsconfig.edn"
-                                       slurp edn/read-string)]
-            (->> gh-users
+  [{:keys [!hn !tw !gh
+           !geo-weather]}]
+  (let [newsconfig (-> "resources/newsconfig.edn"
+                       slurp edn/read-string)]
+    (reset! !gh
+            (->> (:gh-users newsconfig)
                  (map (juxt identity (comp vec get-stars-from)))
-                 (mapv (partial zipmap [:username :stars])))))
-
-  (reset! !tw
-          (let [{:keys [tw-users]} (-> "resources/newsconfig.edn"
-                                       slurp edn/read-string)]
-            (->> tw-users
-                 (map (juxt identity (comp vec get-twts-from)))
-                 (mapv (partial zipmap [:username :tweets])))))
-  (reset! !hn
-          (vec (get-hn-frontpage)))
+                 (mapv (partial zipmap [:username :stars]))))
+    (reset! !geo-weather
+            (->> (:weather-coords newsconfig)
+                 (mapv get-current-weather)))
+    (swap! !tw (partial update-twitter-stor
+                        (:tw-users newsconfig))))
+  (swap! !hn (partial update-hn-stor
+                      (vec (get-hn-frontpage))))
   nil)
+
+
+(comment
+  (let [newsconfig (-> "resources/newsconfig.edn"
+                       slurp edn/read-string)]
+
+    (->> (:weather-coords newsconfig)
+         (map get-current-weather)))
+  )

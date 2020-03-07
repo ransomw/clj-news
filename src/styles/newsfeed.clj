@@ -16,7 +16,8 @@
    [:.user {:margin-bottom "1em"}
     [:.info {:cursor "pointer"}]
     [:.tweets {:border-top "solid 1px black"
-               :padding ".5em"}]]])
+               :padding ".5em"}
+     [:.tweet {:margin-top ".5em"}]]]])
 
 (def social
   [:.social {:display "grid"
@@ -31,6 +32,28 @@
               :padding "1rem"}]
    twitter hn])
 
+(def computing
+  [:.computing {:display "grid"
+                :grid-template-columns "1fr"}
+   [:h5 {:font-family "Overlock-Regular"
+         :font-size "1.2em"
+         :text-align "center"
+         :margin-top ".5em"}]
+   [:.outlet {:margin "1rem"
+              :border "solid .1rem black"
+              :border-radius ".1rem"
+              :padding "1rem"}]
+   [:.gh-stars
+    [:.star {:margin-bottom "1em"}
+     [:.info {:cursor "pointer"}]
+     [:ul {:border-top "solid 1px black"
+           :padding ".5em"
+           :margin-top "0"
+           :margin-bottom "0"
+           :padding-top "1.2em"
+           :list-style "none"
+           :padding-left "0"}]]]])
+
 (def root
   [:.newsfeed {:font-size "1.1rem"}
    [:h2 {:color "#F09000"
@@ -41,7 +64,8 @@
     [:h3 {:color "#0090F0"
           :font-family "italiana-regular"
           :margin-left "2em"}]
-    social]])
+    social
+    computing]])
 
 (defstylesheet newsfeed
   {:output-to "resources/public/css/compiled/newsfeed.css"}

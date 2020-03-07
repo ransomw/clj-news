@@ -1,1 +1,6 @@
-{:tw-users ["ransomwilliams"]}
+{:tw-users ["ransomwilliams"]
+ :gh-users ["ransomw"]
+ :github-auth ["YOUR_USERNAME" "YOUR_PASSWORD"]
+ :weather-coords [{:kid :palo-alto
+                   :lati "37.429167"
+                   :longi "-122.138056"}]}
