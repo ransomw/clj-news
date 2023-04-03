@@ -6,3 +6,8 @@ resources/creds.edn
 resources/newsconfig.edn
 resources/public/js/compiled/
 resources/public/css/compiled/
+resources/public/cljs-out/
+
+.nrepl-port
+.rebel_readline_history
+

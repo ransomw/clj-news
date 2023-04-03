@@ -99,11 +99,13 @@
                 puccih/as-hickory
                 (hsel/select (hsel/child (hsel/class "athing")))
                 (map
-                 #(hsel/select (hsel/child (hsel/class "storylink")) %))
+                 #(hsel/select (hsel/child (hsel/class "titleline")) %))
                 (map first)
+                (map (comp first :content))
                 (map #((juxt (comp :href :attrs)
-                             (comp first :content)) %))
-                (map #(zipmap [:link :text] %)))
+                               (comp first :content)) %))
+                (map #(zipmap [:link :text] %))
+                )
         ;; these are the points and comments
         pc (letfn [(select-score [pnc]
                      (or
@@ -169,7 +171,7 @@
          }
         get-repo-info
         (fn [repo-name]
-          (let [res (clj-http.client/get
+          (let [res (http-c/get
                      (str default-api-url
                           "/repos/" repo-name)
                      {:basic-auth github-auth})
@@ -181,7 +183,7 @@
                  (into {}))))
         loc (str default-api-url
                  "/users/" github-username "/events/public")
-        res (clj-http.client/get loc {:basic-auth github-auth})
+        res (http-c/get loc {:basic-auth github-auth})
         ;; no error handling
         user-info-body (:body res)
         star-events
@@ -268,13 +270,10 @@
   (start [component]
     (-> component
         (assoc :!hn (durable-atom "hn.atom")
-               :!tw (durable-atom "tw.atom")
-               :!gh (durable-atom "gh.atom")
-               :!geo-weather (atom []))))
+               :!gh (durable-atom "gh.atom"))))
   (stop [component]
     (-> component
-        (dissoc :!hn :!tw :!gh
-                :!geo-weather))))
+        (dissoc :!hn :!gh))))
 
 (defn new-stor
   []
@@ -308,28 +307,18 @@
                        (:link %))))))
 
 (defn update-stor
-  [{:keys [!hn !tw !gh
-           !geo-weather]}]
+  [{:keys [!hn !gh]}]
   (let [newsconfig (-> "resources/newsconfig.edn"
                        slurp edn/read-string)]
     (reset! !gh
             (->> (:gh-users newsconfig)
                  (map (juxt identity (comp vec get-stars-from)))
                  (mapv (partial zipmap [:username :stars]))))
-    (reset! !geo-weather
-            (->> (:weather-coords newsconfig)
-                 (mapv get-current-weather)))
-    (swap! !tw (partial update-twitter-stor
-                        (:tw-users newsconfig))))
-  (swap! !hn (partial update-hn-stor
+    (swap! !hn (partial update-hn-stor
                       (vec (get-hn-frontpage))))
   nil)
 
 
 (comment
-  (let [newsconfig (-> "resources/newsconfig.edn"
-                       slurp edn/read-string)]
 
-    (->> (:weather-coords newsconfig)
-         (map get-current-weather)))
   )

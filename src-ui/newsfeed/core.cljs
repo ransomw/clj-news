@@ -8,7 +8,12 @@
             ))
 
 
-(enable-console-print!)
+(defn what-kind? []
+  "Cruel!")
+
+
+
+;; (enable-console-print!)
 
 (defn twitter-user
   [info]
@@ -23,6 +28,7 @@
             ^{:key idx}
             [:div.tweet
              [:span (:text tweet)]])])])))
+
 
 (defn twitter
   [twitter-infos]
@@ -168,13 +174,13 @@
      [:section.social
       [:h3 "social"]
       [:div.social
-       [:div.outlet [twitter (:twitter news)]]
+       #_[:div.outlet [twitter (:twitter news)]]
        [:div.outlet [hn (:hn news)]]]]
      [:section.seasons
       [:h3 "cycles"]
       [:div.computing
        [:div.outlet [github-stars (:gh news)]]]
-      [:div.weather
+      #_[:div.weather
        [:div.outlet [geo-weather (:geo-weather news)]]]
       ]]))
 

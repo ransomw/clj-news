@@ -1,0 +1,3 @@
+^{:launch-js ["chromium" :open-url]
+  :target-dir "resources"}
+{:main newsfeed.core}

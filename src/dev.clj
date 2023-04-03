@@ -73,6 +73,12 @@
 
 (comment
 
+  (remove #(comp nil? :link %) @(:!hn (:stor reloaded.repl/system)))
+
+  )
+
+(comment
+
   @(:!geo-weather (:stor reloaded.repl/system))
 
   :city-name

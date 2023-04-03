@@ -15,6 +15,6 @@ interface.  all it does is
 
 * copy the `resources/*.example` files to `resources/*` and fill in appropriate values
 * `./run.sh` and `cider-connect`
-* eval `styles.*` namespaces to create CSS
+* eval `styles.*` namespaces (`C-c C-k`) to create CSS
 * `dev/go` starts the webserver
 * `./build.sh` to start a figwheel build
