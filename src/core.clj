@@ -169,7 +169,7 @@
          }
         get-repo-info
         (fn [repo-name]
-          (let [res (clj-http.client/get
+          (let [res (http-c/get
                      (str default-api-url
                           "/repos/" repo-name)
                      {:basic-auth github-auth})
@@ -181,7 +181,7 @@
                  (into {}))))
         loc (str default-api-url
                  "/users/" github-username "/events/public")
-        res (clj-http.client/get loc {:basic-auth github-auth})
+        res (http-c/get loc {:basic-auth github-auth})
         ;; no error handling
         user-info-body (:body res)
         star-events
