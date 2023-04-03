@@ -1,3 +1,11 @@
 #! /bin/sh
 
-clj -A:cider-clj
+##
+# deprecated
+##
+# clj -A:cider-clj
+
+###
+
+clojure -M:cider-clj
+

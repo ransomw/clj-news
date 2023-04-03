@@ -1,0 +1,2 @@
+^{:launch-js ["chromium" :open-url]}
+{:main newsfeed.core}

@@ -316,7 +316,7 @@
             (->> (:gh-users newsconfig)
                  (map (juxt identity (comp vec get-stars-from)))
                  (mapv (partial zipmap [:username :stars]))))
-    (reset! !geo-weather
+    #_(reset! !geo-weather
             (->> (:weather-coords newsconfig)
                  (mapv get-current-weather)))
     (swap! !tw (partial update-twitter-stor
