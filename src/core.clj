@@ -99,11 +99,13 @@
                 puccih/as-hickory
                 (hsel/select (hsel/child (hsel/class "athing")))
                 (map
-                 #(hsel/select (hsel/child (hsel/class "storylink")) %))
+                 #(hsel/select (hsel/child (hsel/class "titleline")) %))
                 (map first)
+                (map (comp first :content))
                 (map #((juxt (comp :href :attrs)
-                             (comp first :content)) %))
-                (map #(zipmap [:link :text] %)))
+                               (comp first :content)) %))
+                (map #(zipmap [:link :text] %))
+                )
         ;; these are the points and comments
         pc (letfn [(select-score [pnc]
                      (or
@@ -332,4 +334,7 @@
 
     (->> (:weather-coords newsconfig)
          (map get-current-weather)))
+
+  (filter (fn [item] (nil? (:text item))) (get-hn-frontpage))
+
   )
