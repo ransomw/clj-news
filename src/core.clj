@@ -270,13 +270,10 @@
   (start [component]
     (-> component
         (assoc :!hn (durable-atom "hn.atom")
-               :!tw (durable-atom "tw.atom")
-               :!gh (durable-atom "gh.atom")
-               :!geo-weather (atom []))))
+               :!gh (durable-atom "gh.atom"))))
   (stop [component]
     (-> component
-        (dissoc :!hn :!tw :!gh
-                :!geo-weather))))
+        (dissoc :!hn :!gh))))
 
 (defn new-stor
   []
@@ -310,31 +307,18 @@
                        (:link %))))))
 
 (defn update-stor
-  [{:keys [!hn !tw !gh
-           !geo-weather]}]
+  [{:keys [!hn !gh]}]
   (let [newsconfig (-> "resources/newsconfig.edn"
                        slurp edn/read-string)]
     (reset! !gh
             (->> (:gh-users newsconfig)
                  (map (juxt identity (comp vec get-stars-from)))
                  (mapv (partial zipmap [:username :stars]))))
-    #_(reset! !geo-weather
-            (->> (:weather-coords newsconfig)
-                 (mapv get-current-weather)))
-    (swap! !tw (partial update-twitter-stor
-                        (:tw-users newsconfig))))
-  (swap! !hn (partial update-hn-stor
+    (swap! !hn (partial update-hn-stor
                       (vec (get-hn-frontpage))))
   nil)
 
 
 (comment
-  (let [newsconfig (-> "resources/newsconfig.edn"
-                       slurp edn/read-string)]
-
-    (->> (:weather-coords newsconfig)
-         (map get-current-weather)))
-
-  (filter (fn [item] (nil? (:text item))) (get-hn-frontpage))
 
   )

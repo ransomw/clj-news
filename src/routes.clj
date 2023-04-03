@@ -66,9 +66,7 @@
                       (filter hn-within-duration?)
                       (sort (fn [a b] (> (:score a) (:score b))))
                       (take 15)))
-               :twitter @(:!tw stor)
                :gh @(:!gh stor)
-               :geo-weather @(:!geo-weather stor)
                }
               make-edn-resp)))))
 
