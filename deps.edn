@@ -22,6 +22,8 @@
   metasoarous/oz {:mvn/version "1.6.0-alpha5"}
   com.bhauman/figwheel-main {:mvn/version "0.2.18"}
   com.bhauman/rebel-readline-cljs {:mvn/version "0.1.4"}
+  datalevin/datalevin {:mvn/version "0.8.11"}
+  com.cognitect/transit-clj {:mvn/version "1.0.329"}
   }
  :aliases
  {:cider-clj

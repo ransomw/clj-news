@@ -11,6 +11,7 @@
             [hickory.select :as hsel]
             [durable-atom.core :refer [durable-atom]]
             [com.stuartsierra.component :as component]
+            [datalevin.core :as db]
             ))
 
 
@@ -270,7 +271,8 @@
   (start [component]
     (-> component
         (assoc :!hn (durable-atom "hn.atom")
-               :!gh (durable-atom "gh.atom"))))
+               :!gh (durable-atom "gh.atom")
+               :conn (db/get-conn "datalevin.db"))))
   (stop [component]
     (-> component
         (dissoc :!hn :!gh))))
